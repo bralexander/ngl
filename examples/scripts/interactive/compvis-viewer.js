@@ -191,7 +191,7 @@ function loadStructure (proteinFile, csvFile) {
 
     heatMap = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
-        for (var i = 0; i <= csv.length; i++) {
+        for (var i = 0; i < csv.length; i++) {
           const wtProb = parseFloat(csv[i][csvWtProbCol])
           // console.log('wt', wtProb)
           const resNum = parseFloat(csv[i][csvResNumCol])
@@ -208,7 +208,7 @@ function loadStructure (proteinFile, csvFile) {
 
     customPercent = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
-        for (var i = 0; i <= csv.length; i++) {
+        for (var i = 0; i < csv.length; i++) {
           const predProb = parseFloat(csv[i][csvPrProbCol])
           const wtProb = parseFloat(csv[i][csvWtProbCol])
           // console.log('wt', wtProb)
