@@ -185,6 +185,8 @@ function loadStructure (proteinFile, csvFile) {
     csv = ol[1].data
 
     setLigandOptions()
+    setChainOptions()
+    setResidueOptions()
 
     // var gradientArray = makeGradientArray()
     firstResNum = parseInt(csv[0][csvResNumCol])
@@ -336,6 +338,41 @@ function setLigandOptions () {
   })
 }
 
+function setChainOptions () {
+  chainSelect.innerHTML = ''
+  var options = [['', 'select chain']]
+  struc.structure.eachChain(function (cp) {
+    var name = cp.chainname
+    if (cp.entity && cp.entity.description) name += ' (' + cp.entity.description + ')'
+    options.push([cp.chainname, name])
+  }, new NGL.Selection('polymer'))
+  options.forEach(function (d) {
+    chainSelect.add(createElement('option', {
+      value: d[0], text: d[1]
+    }))
+  })
+}
+
+function setResidueOptions (chain) {
+  residueSelect.innerHTML = ''
+  var options = [['', 'select residue']]
+  if (chain) {
+    struc.structure.eachResidue(function (rp) {
+      var sele = ''
+      if (rp.resno !== undefined) sele += rp.resno
+      if (rp.inscode) sele += '^' + rp.inscode
+      if (rp.chain) sele += ':' + rp.chainname
+      var name = (rp.resname ? '[' + rp.resname + ']' : '') + sele
+      options.push([sele, name])
+    }, new NGL.Selection('polymer and :' + chain))
+  }
+  options.forEach(function (d) {
+    residueSelect.add(createElement('option', {
+      value: d[0], text: d[1]
+    }))
+  })
+}
+
 // TO-DO: add safeguards to makesure file[0] is pdb and file[1] is csv
 // and csv is in same format (alert?)
 var fileList = []
@@ -467,7 +504,7 @@ function showRegion (sele) {
 
 var ligandSelect = createSelect([], {
   onchange: function (e) {
-    // residueSelect.value = ''
+    residueSelect.value = ''
     var sele = e.target.value
     if (!sele) {
       showFull()
@@ -477,6 +514,28 @@ var ligandSelect = createSelect([], {
   }
 }, { top: getTopPosition(40), left: '12px', width: '130px' })
 addElement(ligandSelect)
+
+var chainSelect = createSelect([], {
+  onchange: function (e) {
+    ligandSelect.value = ''
+    residueSelect.value = ''
+    setResidueOptions(e.target.value)
+  }
+}, { top: getTopPosition(20), left: '12px', width: '130px' })
+addElement(chainSelect)
+
+var residueSelect = createSelect([], {
+  onchange: function (e) {
+    ligandSelect.value = ''
+    var sele = e.target.value
+    if (!sele) {
+      showFull()
+    } else {
+      showLigand(sele)
+    }
+  }
+}, { top: getTopPosition(20), left: '12px', width: '130px' })
+addElement(residueSelect)
 
 // onclick residue select and show ligand
 var prevSele = ''
