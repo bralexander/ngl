@@ -199,7 +199,10 @@ function loadStructure (proteinFile, csvFile) {
           const normWtProb = (wtProb * 100).toFixed(0)
           // console.log('n', normWtProb)
 
-          if (atom.resno === resNum) {
+          if (atom.isNucleic()) {
+            return 0x004e00
+          }
+          else if (atom.resno === resNum) {
             return gradientArray[normWtProb]
           }
         }
