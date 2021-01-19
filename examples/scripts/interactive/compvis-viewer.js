@@ -218,7 +218,10 @@ function loadStructure (proteinFile, csvFile) {
           const resNum = parseFloat(csv[i][csvResNumCol])
 
           if (atom.resno === resNum) {
-            if (wtProb < 0.01 && predProb > 0.7) {
+            if (atom.isNucleic()) {
+              return 0x004e00
+            }
+            else if (wtProb < 0.01 && predProb > 0.7) {
               return 0xFF0080// hot pink
             } else if (wtProb < 0.01) {
               return 0xCC00FF // hot pink
