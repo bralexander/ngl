@@ -378,12 +378,12 @@ function setResidueOptions (chain) {
 
 // TO-DO: add safeguards to makesure file[0] is pdb and file[1] is csv
 // and csv is in same format (alert?)
-var fileList = []
+var loadStrucFile, loadCsvFile
 var loadStructureButton = createFileButton('Load Structure 1st', {
   accept: '.pdb,.cif,.ent,.gz,.mol2',
   onchange: function (e) {
     if (e.target.files[0]) {
-      fileList.push(e.target.files[0])
+      loadStrucFile = e.target.files[0]
     }
   }
 }, { top: getTopPosition(), left: '12px' })
@@ -393,21 +393,14 @@ var loadCsvButton = createFileButton('Load csv 2nd', {
   accept: '.csv',
   onchange: function (e) {
     if (e.target.files[0]) {
-      fileList.push(e.target.files[0])
+      loadCsvFile = e.target.files[0]
+      loadStructure(loadStrucFile, loadCsvFile)
+      loadCsvFile = ''
+      loadStrucFile = ''
     }
   }
 }, { top: getTopPosition(20), left: '12px' })
 addElement(loadCsvButton)
-
-var submitButton = createElement('input', {
-  value: 'submit files',
-  type: 'button',
-  onclick: function (e) {
-    loadStructure(fileList[0], fileList[1])
-    fileList = []
-  }
-}, { top: getTopPosition(30), left: '12px' })
-addElement(submitButton)
 
 // More useful for mutcompute
 var loadPdbidInput = createElement('input', {
@@ -423,7 +416,7 @@ var loadPdbidInput = createElement('input', {
       loadStructure(proteinInput, csvInput)
     }
   }
-}, { top: getTopPosition(30), left: '12px', width: '120px' })
+}, { top: getTopPosition(20), left: '12px', width: '120px' })
 addElement(loadPdbidInput)
 
 function showFull () {
@@ -440,12 +433,12 @@ function showFull () {
   struc.autoView(2000)
 }
 
-var fullButton = createElement('input', {
-  value: 'full structure',
-  type: 'button',
-  onclick: showFull
-}, { top: getTopPosition(30), left: '12px' })
-addElement(fullButton)
+// var fullButton = createElement('input', {
+//   value: 'full structure',
+//   type: 'button',
+//   onclick: showFull
+// }, { top: getTopPosition(30), left: '12px' })
+// addElement(fullButton)
 
 function showLigand (sele) {
   var s = struc.structure
@@ -515,7 +508,7 @@ var ligandSelect = createSelect([], {
       showLigand(sele)
     }
   }
-}, { top: getTopPosition(40), left: '12px', width: '130px' })
+}, { top: getTopPosition(30), left: '12px', width: '130px' })
 addElement(ligandSelect)
 
 var chainSelect = createSelect([], {
@@ -573,7 +566,7 @@ stage.signals.clicked.add(function (pickingProxy) {
 
 addElement(createElement('span', {
   innerText: 'pocket near clipping'
-}, { top: getTopPosition(50), left: '12px', color: 'grey' }))
+}, { top: getTopPosition(30), left: '12px', color: 'grey' }))
 var clipNearRange = createElement('input', {
   type: 'range', value: 0, min: 0, max: 10000, step: 1
 }, { top: getTopPosition(16), left: '12px' })
