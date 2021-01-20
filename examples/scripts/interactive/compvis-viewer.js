@@ -185,6 +185,8 @@ function loadStructure (proteinFile, csvFile) {
     csv = ol[1].data
 
     setLigandOptions()
+    setChainOptions()
+    setResidueOptions()
 
     // var gradientArray = makeGradientArray()
     firstResNum = parseInt(csv[0][csvResNumCol])
@@ -199,10 +201,7 @@ function loadStructure (proteinFile, csvFile) {
           const normWtProb = (wtProb * 100).toFixed(0)
           // console.log('n', normWtProb)
 
-          if (atom.isNucleic()) {
-            return 0x004e00
-          }
-          else if (atom.resno === resNum) {
+          if (atom.resno === resNum) {
             return gradientArray[normWtProb]
           }
         }
@@ -218,10 +217,7 @@ function loadStructure (proteinFile, csvFile) {
           const resNum = parseFloat(csv[i][csvResNumCol])
 
           if (atom.resno === resNum) {
-            if (atom.isNucleic()) {
-              return 0x004e00
-            }
-            else if (wtProb < 0.01 && predProb > 0.7) {
+            if (wtProb < 0.01 && predProb > 0.7) {
               return 0xFF0080// hot pink
             } else if (wtProb < 0.01) {
               return 0xCC00FF // hot pink
@@ -337,6 +333,41 @@ function setLigandOptions () {
   }, new NGL.Selection(ligandSele))
   options.forEach(function (d) {
     ligandSelect.add(createElement('option', {
+      value: d[0], text: d[1]
+    }))
+  })
+}
+
+function setChainOptions () {
+  chainSelect.innerHTML = ''
+  var options = [['', 'select chain']]
+  struc.structure.eachChain(function (cp) {
+    var name = cp.chainname
+    if (cp.entity && cp.entity.description) name += ' (' + cp.entity.description + ')'
+    options.push([cp.chainname, name])
+  }, new NGL.Selection('polymer'))
+  options.forEach(function (d) {
+    chainSelect.add(createElement('option', {
+      value: d[0], text: d[1]
+    }))
+  })
+}
+
+function setResidueOptions (chain) {
+  residueSelect.innerHTML = ''
+  var options = [['', 'select residue']]
+  if (chain) {
+    struc.structure.eachResidue(function (rp) {
+      var sele = ''
+      if (rp.resno !== undefined) sele += rp.resno
+      if (rp.inscode) sele += '^' + rp.inscode
+      if (rp.chain) sele += ':' + rp.chainname
+      var name = (rp.resname ? '[' + rp.resname + ']' : '') + sele
+      options.push([sele, name])
+    }, new NGL.Selection('polymer and :' + chain))
+  }
+  options.forEach(function (d) {
+    residueSelect.add(createElement('option', {
       value: d[0], text: d[1]
     }))
   })
@@ -483,6 +514,28 @@ var ligandSelect = createSelect([], {
   }
 }, { top: getTopPosition(40), left: '12px', width: '130px' })
 addElement(ligandSelect)
+
+var chainSelect = createSelect([], {
+  onchange: function (e) {
+    ligandSelect.value = ''
+    residueSelect.value = ''
+    setResidueOptions(e.target.value)
+  }
+}, { top: getTopPosition(20), left: '12px', width: '130px' })
+addElement(chainSelect)
+
+var residueSelect = createSelect([], {
+  onchange: function (e) {
+    ligandSelect.value = ''
+    var sele = e.target.value
+    if (!sele) {
+      showFull()
+    } else {
+      showLigand(sele)
+    }
+  }
+}, { top: getTopPosition(20), left: '12px', width: '130px' })
+addElement(residueSelect)
 
 // onclick residue select and show ligand
 var prevSele = ''
