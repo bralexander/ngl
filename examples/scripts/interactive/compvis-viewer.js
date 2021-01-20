@@ -65,7 +65,11 @@ stage.signals.hovered.add(function (pickingProxy) {
       var atom = pickingProxy.atom || pickingProxy.closestBondAtom
       // var mp = pickingProxy.mouse.position
       // console.log('pick', pickingProxy.atom.resno)
-      var index = atom.resno - firstResNum
+      // if (atom.resno) {
+      //   // var index = atom.resno - firstResNum
+      // }
+      //var index = atom.resno - firstResNum
+      var index = atom.residueIndex
       if (index < csv.length && atom.resno >= firstResNum) {
         tooltip.innerHTML = `
       RESNO: ${atom.resno}<br/>
@@ -76,7 +80,8 @@ stage.signals.hovered.add(function (pickingProxy) {
         tooltip.style.bottom = 3 + 'px'
         tooltip.style.left = stage.viewer.width - 200 + 'px'
         tooltip.style.display = 'block'
-      } else {
+      } 
+      else {
         tooltip.style.display = 'none'
       }
     }
@@ -151,6 +156,7 @@ const csvPrAaCol = 6
 const csvPrProbCol = 8
 
 var firstResNum
+var resNum, wtProb, normWtProb
 
 function loadStructure (proteinFile, csvFile) {
   struc = undefined
@@ -186,25 +192,30 @@ function loadStructure (proteinFile, csvFile) {
     struc = ol[0]
     csv = ol[1].data
 
+    // for (var i = 0; i < csv.length; i++) {
+    //   wtProb = parseFloat(csv[i][csvWtProbCol])
+    //   resNum = parseFloat(csv[i][csvResNumCol])
+    //   normWtProb = (wtProb * 100).toFixed(0)
+    //   return wtProb, resNum, normWtProb
+    // }
+    firstResNum = parseInt(csv[0][csvResNumCol])
+
     setLigandOptions()
     setChainOptions()
     setResidueOptions()
-
-    // var gradientArray = makeGradientArray()
-    firstResNum = parseInt(csv[0][csvResNumCol])
 
     heatMap = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
         for (var i = 0; i < csv.length; i++) {
           const wtProb = parseFloat(csv[i][csvWtProbCol])
-          // console.log('wt', wtProb)
           const resNum = parseFloat(csv[i][csvResNumCol])
 
           const normWtProb = (wtProb * 100).toFixed(0)
-          // console.log('n', normWtProb)
+
           if (atom.isNucleic()) {
             return 0x004e00
-          } else if (atom.resno === resNum) {
+          } 
+          if (atom.resno === resNum) {
             return gradientArray[normWtProb]
           }
         }
