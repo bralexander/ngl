@@ -143,6 +143,8 @@ var csv
 var neighborSele
 var sidechainAttached = false
 
+var loadStrucFile, loadCsvFile
+
 const csvResNumCol = 4
 const csvWtProbCol = 7
 const csvPrAaCol = 6
@@ -378,22 +380,29 @@ function setResidueOptions (chain) {
 
 // TO-DO: add safeguards to makesure file[0] is pdb and file[1] is csv
 // and csv is in same format (alert?)
-var loadStrucFile, loadCsvFile
-var loadStructureButton = createFileButton('Load Structure 1st', {
+
+var loadStructureButton = createFileButton('Load Structure', {
   accept: '.pdb,.cif,.ent,.gz,.mol2',
   onchange: function (e) {
     if (e.target.files[0]) {
       loadStrucFile = e.target.files[0]
     }
+    if (loadCsvFile) {
+      loadStructure(loadStrucFile, loadCsvFile)
+      loadCsvFile = ''
+      loadStrucFile = ''
+    }
   }
 }, { top: getTopPosition(), left: '12px' })
 addElement(loadStructureButton)
 
-var loadCsvButton = createFileButton('Load csv 2nd', {
+var loadCsvButton = createFileButton('Load csv', {
   accept: '.csv',
   onchange: function (e) {
     if (e.target.files[0]) {
       loadCsvFile = e.target.files[0]
+    }
+    if (loadStrucFile) {
       loadStructure(loadStrucFile, loadCsvFile)
       loadCsvFile = ''
       loadStrucFile = ''
