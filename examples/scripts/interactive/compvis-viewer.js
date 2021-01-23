@@ -264,7 +264,7 @@ function loadStructure (proteinFile, csvFile) {
   .catch(failure)
 }
 
-// ERROR HANDLING -- specifically for mutcompute version (including above catch)
+// ERROR HANDLING for input box
 function failure (error) {
   console.error(error)
   if (window.confirm('Sorry, this data does not exist.')) {
@@ -356,14 +356,12 @@ var loadCsvButton = createFileButton('Load csv', {
 }, { top: getTopPosition(20), left: '12px' })
 addElement(loadCsvButton)
 
-// More useful for mutcompute
 var loadPdbidInput = createElement('input', {
   type: 'text',
   placeholder: 'Enter pdbID',
   onkeypress: function (e) {
     if (e.keyCode === 13) {
       var inputValue = e.target.value.toLowerCase()
-      // str.slice(0, 4)
       var proteinInput = 'data://mutcompute/' + inputValue + '.pdb'
       var csvInput = 'data://mutcompute/' + inputValue + '.csv'
       e.preventDefault()
@@ -386,13 +384,6 @@ function showFull () {
 
   struc.autoView(2000)
 }
-
-// var fullButton = createElement('input', {
-//   value: 'full structure',
-//   type: 'button',
-//   onclick: showFull
-// }, { top: getTopPosition(30), left: '12px' })
-// addElement(fullButton)
 
 function showLigand (sele) {
   var s = struc.structure
@@ -454,7 +445,7 @@ function showRegion (sele) {
 
 var ligandSelect = createSelect([], {
   onchange: function (e) {
-    // residueSelect.value = ''
+    residueSelect.value = ''
     var sele = e.target.value
     if (!sele) {
       showFull()
@@ -487,13 +478,13 @@ var residueSelect = createSelect([], {
 }, { top: getTopPosition(20), left: '12px', width: '130px' })
 addElement(residueSelect)
 
-// onclick residue select and show ligand
+// onclick residue select and show ligandrepr
 var prevSele = ''
 stage.signals.clicked.add(function (pickingProxy) {
   if (pickingProxy === undefined) {
     showFull()
   }
-  if (/*ballStickCheckbox.checked === false && */pickingProxy !== undefined) {
+  if (pickingProxy !== undefined) {
     var sele = ''
     if (pickingProxy.closestBondAtom) {
       sele = ''
