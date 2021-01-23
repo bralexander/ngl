@@ -70,13 +70,15 @@ stage.signals.hovered.add(function (pickingProxy) {
       // }
       //var index = atom.resno - firstResNum
       var index = atom.residueIndex
-      if (index < csv.length && atom.resno >= firstResNum) {
+      const csvRow = residueData[atom.resno]
+      // if (index < csv.length && atom.resno >= firstResNum) {
+      if (csvRow !== undefined) {
         tooltip.innerHTML = `
       RESNO: ${atom.resno}<br/>
       WT AA: ${atom.resname}<br/>
-      WT PROB: ${csv[index][csvWtProbCol]}<br/>
-      PRED AA: ${csv[index][csvPrAaCol]}<br/>
-      PRED PROB: ${csv[index][csvPrProbCol]}<br/>`
+      WT PROB: ${csvRow[csvWtProbCol]}<br/>
+      PRED AA: ${csvRow[csvPrAaCol]}<br/>
+      PRED PROB: ${csvRow[csvPrProbCol]}<br/>`
         tooltip.style.bottom = 3 + 'px'
         tooltip.style.left = stage.viewer.width - 200 + 'px'
         tooltip.style.display = 'block'
@@ -88,51 +90,51 @@ stage.signals.hovered.add(function (pickingProxy) {
   }
 })
 
-function getGradientColor (startColor, endColor, thirdColor, percent) {
-  // switch for second gradient i.e white to red for heat map
-  if (percent >= 1) {
-    percent -= 1
-    startColor = endColor
-    endColor = thirdColor
-  }
+// function getGradientColor (startColor, endColor, thirdColor, percent) {
+//   // switch for second gradient i.e white to red for heat map
+//   if (percent >= 1) {
+//     percent -= 1
+//     startColor = endColor
+//     endColor = thirdColor
+//   }
 
-  // get colors
-  var startRed = parseInt(startColor.substr(0, 2), 16)
-  var startGreen = parseInt(startColor.substr(2, 2), 16)
-  var startBlue = parseInt(startColor.substr(4, 2), 16)
+//   // get colors
+//   var startRed = parseInt(startColor.substr(0, 2), 16)
+//   var startGreen = parseInt(startColor.substr(2, 2), 16)
+//   var startBlue = parseInt(startColor.substr(4, 2), 16)
 
-  var endRed = parseInt(endColor.substr(0, 2), 16)
-  var endGreen = parseInt(endColor.substr(2, 2), 16)
-  var endBlue = parseInt(endColor.substr(4, 2), 16)
+//   var endRed = parseInt(endColor.substr(0, 2), 16)
+//   var endGreen = parseInt(endColor.substr(2, 2), 16)
+//   var endBlue = parseInt(endColor.substr(4, 2), 16)
 
-  // calculate new color
-  var diffRed = endRed - startRed
-  var diffGreen = endGreen - startGreen
-  var diffBlue = endBlue - startBlue
+//   // calculate new color
+//   var diffRed = endRed - startRed
+//   var diffGreen = endGreen - startGreen
+//   var diffBlue = endBlue - startBlue
 
-  diffRed = ((diffRed * percent) + startRed).toString(16).split('.')[0]
-  diffGreen = ((diffGreen * percent) + startGreen).toString(16).split('.')[0]
-  diffBlue = ((diffBlue * percent) + startBlue).toString(16).split('.')[0]
+//   diffRed = ((diffRed * percent) + startRed).toString(16).split('.')[0]
+//   diffGreen = ((diffGreen * percent) + startGreen).toString(16).split('.')[0]
+//   diffBlue = ((diffBlue * percent) + startBlue).toString(16).split('.')[0]
 
-  // ensure 2 digits by color (necessary)
-  if (diffRed.length === 1) diffRed = '0' + diffRed
-  if (diffGreen.length === 1) diffGreen = '0' + diffGreen
-  if (diffBlue.length === 1) diffBlue = '0' + diffBlue
+//   // ensure 2 digits by color (necessary)
+//   if (diffRed.length === 1) diffRed = '0' + diffRed
+//   if (diffGreen.length === 1) diffGreen = '0' + diffGreen
+//   if (diffBlue.length === 1) diffBlue = '0' + diffBlue
 
-  return '0x' + diffRed + diffGreen + diffBlue
-}
+//   return '0x' + diffRed + diffGreen + diffBlue
+// }
 
-function makeGradientArray () {
-  var gradientArray = []
-  for (var count = 0; count < 101; count++) {
-    var newColor = getGradientColor('FF0000', 'FFFFFF', '0000FF', (0.02 * count))
-    var numColor = parseInt(Number(newColor), 10)
-    gradientArray.push(numColor)
-  }
-  return gradientArray
-}
+// function makeGradientArray () {
+//   var gradientArray = []
+//   for (var count = 0; count < 101; count++) {
+//     var newColor = getGradientColor('FF0000', 'FFFFFF', '0000FF', (0.02 * count))
+//     var numColor = parseInt(Number(newColor), 10)
+//     gradientArray.push(numColor)
+//   }
+//   return gradientArray
+// }
 
-var gradientArray = makeGradientArray()
+// var gradientArray = makeGradientArray()
 
 var ligandSele = '( not polymer or not ( protein or nucleic ) ) and not ( water or ACE or NH2 )'
 
@@ -145,6 +147,8 @@ var heatMap, customPercent
 
 var struc
 var csv
+var residueData
+
 var neighborSele
 var sidechainAttached = false
 
@@ -192,35 +196,64 @@ function loadStructure (proteinFile, csvFile) {
     struc = ol[0]
     csv = ol[1].data
 
-    // for (var i = 0; i < csv.length; i++) {
-    //   wtProb = parseFloat(csv[i][csvWtProbCol])
-    //   resNum = parseFloat(csv[i][csvResNumCol])
-    //   normWtProb = (wtProb * 100).toFixed(0)
-    //   return wtProb, resNum, normWtProb
-    // }
     firstResNum = parseInt(csv[0][csvResNumCol])
 
     setLigandOptions()
     setChainOptions()
     setResidueOptions()
 
-    heatMap = NGL.ColormakerRegistry.addScheme(function (params) {
+    residueData = {}
+    console.log('l', csv.length)
+    for (var i = 0; i < csv.length; i++) {
+      const index = parseFloat(csv[i][0])
+      const resNum = parseFloat(csv[i][csvResNumCol])
+      //console.log(i, resNum)
+      // 228 is undefined (2isk)
+      residueData[resNum] = csv[i]
+    }
+
+    var heatMap = NGL.ColormakerRegistry.addScheme(function (params) {
+      this.domain = [ 0.5, 1 ]
+      this.scale = 'rwb'
+      this.mode = 'rgb'
+      var scale = this.getScale()
       this.atomColor = function (atom) {
-        for (var i = 0; i < csv.length; i++) {
-          const wtProb = parseFloat(csv[i][csvWtProbCol])
-          const resNum = parseFloat(csv[i][csvResNumCol])
-
-          const normWtProb = (wtProb * 100).toFixed(0)
-
-          if (atom.isNucleic()) {
-            return 0x004e00
-          } 
-          if (atom.resno === resNum) {
-            return gradientArray[normWtProb]
-          }
+        //console.log(atom.residueIndex)
+        // var index = parseFloat(residueData[atom.residueIndex][0])
+        // console.log(atom.residueIndex, index)
+        //console.log('max', atom.resno[0])
+        const csvRow = residueData[atom.resno]
+        // const resNum = parseFloat(csvRow[0])
+        if (atom.isNucleic()) {
+          return 0x004e00
         }
+        if (csvRow !== undefined) {
+          const wtProb = parseFloat(csvRow[csvWtProbCol])
+          return scale(wtProb)
+        //var value = parseFloat(csv[ atom.resno ][ csvWtProbCol ])
+        }  else {
+        return 0xFF0080
       }
+    }
     })
+
+    // heatMap = NGL.ColormakerRegistry.addScheme(function (params) {
+    //   this.atomColor = function (atom) {
+    //     for (var i = 0; i < csv.length; i++) {
+    //       const wtProb = parseFloat(csv[i][csvWtProbCol])
+    //       const resNum = parseFloat(csv[i][csvResNumCol])
+
+    //       const normWtProb = (wtProb * 100).toFixed(0)
+
+    //       if (atom.isNucleic()) {
+    //         return 0x004e00
+    //       } 
+    //       if (atom.resno === resNum) {
+    //         return gradientArray[normWtProb]
+    //       }
+    //     }
+    //   }
+    // })
 
     customPercent = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
