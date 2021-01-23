@@ -60,18 +60,10 @@ document.body.appendChild(tooltip)
 stage.mouseControls.remove('hoverPick')
 // listen to `hovered` signal to move tooltip around and change its text
 stage.signals.hovered.add(function (pickingProxy) {
-  if (cartoonCheckbox.checked === true || ballStickCheckbox.checked === true || customCheckbox.checked === true) {
+  if (cartoonCheckbox.checked === true || customCheckbox.checked === true) {
     if (pickingProxy && (pickingProxy.atom || pickingProxy.bond)) {
       var atom = pickingProxy.atom || pickingProxy.closestBondAtom
-      // var mp = pickingProxy.mouse.position
-      // console.log('pick', pickingProxy.atom.resno)
-      // if (atom.resno) {
-      //   // var index = atom.resno - firstResNum
-      // }
-      //var index = atom.resno - firstResNum
-      var index = atom.residueIndex
       const csvRow = residueData[atom.resno]
-      // if (index < csv.length && atom.resno >= firstResNum) {
       if (csvRow !== undefined) {
         tooltip.innerHTML = `
       RESNO: ${atom.resno}<br/>
@@ -90,58 +82,13 @@ stage.signals.hovered.add(function (pickingProxy) {
   }
 })
 
-// function getGradientColor (startColor, endColor, thirdColor, percent) {
-//   // switch for second gradient i.e white to red for heat map
-//   if (percent >= 1) {
-//     percent -= 1
-//     startColor = endColor
-//     endColor = thirdColor
-//   }
-
-//   // get colors
-//   var startRed = parseInt(startColor.substr(0, 2), 16)
-//   var startGreen = parseInt(startColor.substr(2, 2), 16)
-//   var startBlue = parseInt(startColor.substr(4, 2), 16)
-
-//   var endRed = parseInt(endColor.substr(0, 2), 16)
-//   var endGreen = parseInt(endColor.substr(2, 2), 16)
-//   var endBlue = parseInt(endColor.substr(4, 2), 16)
-
-//   // calculate new color
-//   var diffRed = endRed - startRed
-//   var diffGreen = endGreen - startGreen
-//   var diffBlue = endBlue - startBlue
-
-//   diffRed = ((diffRed * percent) + startRed).toString(16).split('.')[0]
-//   diffGreen = ((diffGreen * percent) + startGreen).toString(16).split('.')[0]
-//   diffBlue = ((diffBlue * percent) + startBlue).toString(16).split('.')[0]
-
-//   // ensure 2 digits by color (necessary)
-//   if (diffRed.length === 1) diffRed = '0' + diffRed
-//   if (diffGreen.length === 1) diffGreen = '0' + diffGreen
-//   if (diffBlue.length === 1) diffBlue = '0' + diffBlue
-
-//   return '0x' + diffRed + diffGreen + diffBlue
-// }
-
-// function makeGradientArray () {
-//   var gradientArray = []
-//   for (var count = 0; count < 101; count++) {
-//     var newColor = getGradientColor('FF0000', 'FFFFFF', '0000FF', (0.02 * count))
-//     var numColor = parseInt(Number(newColor), 10)
-//     gradientArray.push(numColor)
-//   }
-//   return gradientArray
-// }
-
-// var gradientArray = makeGradientArray()
 
 var ligandSele = '( not polymer or not ( protein or nucleic ) ) and not ( water or ACE or NH2 )'
 
 var pocketRadius = 0
 var pocketRadiusClipFactor = 1
 
-var cartoonRepr, spacefillRepr, neighborRepr, ligandRepr, contactRepr, pocketRepr, labelRepr, customRepr, ballStickRepr, waterIonRepr
+var cartoonRepr, spacefillRepr, neighborRepr, ligandRepr, contactRepr, pocketRepr, labelRepr, customRepr
 
 var heatMap, customPercent
 
@@ -172,8 +119,6 @@ function loadStructure (proteinFile, csvFile) {
   pocketOpacityRange.value = 0
   cartoonCheckbox.checked = true
   customCheckbox.checked = false
-  ballStickCheckbox.checked = false
-  waterIonCheckbox.checked = false
   hydrophobicCheckbox.checked = false
   hydrogenBondCheckbox.checked = true
   weakHydrogenBondCheckbox.checked = false
@@ -185,7 +130,7 @@ function loadStructure (proteinFile, csvFile) {
   cationPiCheckbox.checked = true
   piStackingCheckbox.checked = true
   return Promise.all([
-    stage.loadFile(proteinFile, { defaultRepresentation: true }),
+    stage.loadFile(proteinFile),
     NGL.autoLoad(csvFile, {
       ext: 'csv',
       delimiter: ' ',
@@ -203,12 +148,8 @@ function loadStructure (proteinFile, csvFile) {
     setResidueOptions()
 
     residueData = {}
-    console.log('l', csv.length)
     for (var i = 0; i < csv.length; i++) {
-      const index = parseFloat(csv[i][0])
       const resNum = parseFloat(csv[i][csvResNumCol])
-      //console.log(i, resNum)
-      // 228 is undefined (2isk)
       residueData[resNum] = csv[i]
     }
 
@@ -218,42 +159,18 @@ function loadStructure (proteinFile, csvFile) {
       this.mode = 'rgb'
       var scale = this.getScale()
       this.atomColor = function (atom) {
-        //console.log(atom.residueIndex)
-        // var index = parseFloat(residueData[atom.residueIndex][0])
-        // console.log(atom.residueIndex, index)
-        //console.log('max', atom.resno[0])
         const csvRow = residueData[atom.resno]
-        // const resNum = parseFloat(csvRow[0])
         if (atom.isNucleic()) {
           return 0x004e00
         }
         if (csvRow !== undefined) {
           const wtProb = parseFloat(csvRow[csvWtProbCol])
           return scale(wtProb)
-        //var value = parseFloat(csv[ atom.resno ][ csvWtProbCol ])
         }  else {
-        return 0xFF0080
+        return 0xcccccc
       }
     }
     })
-
-    // heatMap = NGL.ColormakerRegistry.addScheme(function (params) {
-    //   this.atomColor = function (atom) {
-    //     for (var i = 0; i < csv.length; i++) {
-    //       const wtProb = parseFloat(csv[i][csvWtProbCol])
-    //       const resNum = parseFloat(csv[i][csvResNumCol])
-
-    //       const normWtProb = (wtProb * 100).toFixed(0)
-
-    //       if (atom.isNucleic()) {
-    //         return 0x004e00
-    //       } 
-    //       if (atom.resno === resNum) {
-    //         return gradientArray[normWtProb]
-    //       }
-    //     }
-    //   }
-    // })
 
     customPercent = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
@@ -293,21 +210,9 @@ function loadStructure (proteinFile, csvFile) {
       color: customPercent,
       visible: false
     })
-    ballStickRepr = struc.addRepresentation('ball+stick', {
-      visible: false,
-      // removes water ions
-      sele: 'polymer',
-      name: 'polymer'
-    })
-    waterIonRepr = struc.addRepresentation('ball+stick', {
-      name: 'waterIon',
-      visible: waterIonCheckbox.checked,
-      sele: 'water or ion',
-      scale: 0.25
-    })
     spacefillRepr = struc.addRepresentation('spacefill', {
       sele: ligandSele,
-      visible: true
+      visible: false
     })
     neighborRepr = struc.addRepresentation('ball+stick', {
       sele: 'none',
@@ -356,16 +261,15 @@ function loadStructure (proteinFile, csvFile) {
       labelGrouping: 'residue'
     })
   })
-  // .catch(failure)
+  .catch(failure)
 }
 
 // ERROR HANDLING -- specifically for mutcompute version (including above catch)
-// function failure (error) {
-//   console.error(error)
-//   if (window.confirm('Sorry, this data does not exist. Please run your desired protein on mutcompute.com first. Would you like to be redirected to mutcompute.com?')) {
-//     window.location.href = 'https://mutcompute.com';
-//   }
-// }
+function failure (error) {
+  console.error(error)
+  if (window.confirm('Sorry, this data does not exist.')) {
+  }
+}
 
 function setLigandOptions () {
   ligandSelect.innerHTML = ''
@@ -421,9 +325,6 @@ function setResidueOptions (chain) {
     }))
   })
 }
-
-// TO-DO: add safeguards to makesure file[0] is pdb and file[1] is csv
-// and csv is in same format (alert?)
 
 var loadStructureButton = createFileButton('Load Structure', {
   accept: '.pdb,.cif,.ent,.gz,.mol2',
@@ -592,7 +493,7 @@ stage.signals.clicked.add(function (pickingProxy) {
   if (pickingProxy === undefined) {
     showFull()
   }
-  if (ballStickCheckbox.checked === false && pickingProxy !== undefined) {
+  if (/*ballStickCheckbox.checked === false && */pickingProxy !== undefined) {
     var sele = ''
     if (pickingProxy.closestBondAtom) {
       sele = ''
@@ -683,31 +584,6 @@ var customCheckbox = createElement('input', {
 addElement(customCheckbox)
 addElement(createElement('span', {
   innerText: 'Custom'
-}, { top: getTopPosition(), left: '32px', color: 'grey' }))
-
-var ballStickCheckbox = createElement('input', {
-  type: 'checkbox',
-  checked: false,
-  onchange: function (e) {
-    ballStickRepr.setVisibility(e.target.checked)
-  }
-}, { top: getTopPosition(20), left: '12px' })
-addElement(ballStickCheckbox)
-addElement(createElement('span', {
-  innerText: 'ball+stick'
-}, { top: getTopPosition(), left: '32px', color: 'grey' }))
-
-var waterIonCheckbox = createElement('input', {
-  type: 'checkbox',
-  checked: false,
-  onchange: function (e) {
-    // stage.getRepresentationsByName('waterIon')
-    waterIonRepr.setVisibility(e.target.checked)
-  }
-}, { top: getTopPosition(20), left: '12px' })
-addElement(waterIonCheckbox)
-addElement(createElement('span', {
-  innerText: 'water ion'
 }, { top: getTopPosition(), left: '32px', color: 'grey' }))
 
 var sidechainAttachedCheckbox = createElement('input', {
@@ -857,4 +733,4 @@ addElement(createElement('span', {
   innerText: 'pi-stacking'
 }, { top: getTopPosition(), left: '32px', color: 'grey' }))
 
-loadStructure('data://mutcompute/tk14.pdb', 'data://mutcompute/tk14.csv')
+loadStructure('data://mutcompute/2isk.pdb', 'data://mutcompute/2isk.csv')
