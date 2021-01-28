@@ -1,3 +1,9 @@
+/**
+ * @file Compvis Viewer
+ * @author Brad Alexander <bralexander@live.com>
+ * @private
+ */
+
 function addElement (el) {
   Object.assign(el.style, {
     position: 'absolute',
@@ -60,28 +66,23 @@ document.body.appendChild(tooltip)
 stage.mouseControls.remove('hoverPick')
 // listen to `hovered` signal to move tooltip around and change its text
 stage.signals.hovered.add(function (pickingProxy) {
-  if (cartoonCheckbox.checked === true || ballStickCheckbox.checked === true || customCheckbox.checked === true) {
+  if (cartoonCheckbox.checked === true || customCheckbox.checked === true) {
     if (pickingProxy && (pickingProxy.atom || pickingProxy.bond)) {
       var atom = pickingProxy.atom || pickingProxy.closestBondAtom
-      // var mp = pickingProxy.mouse.position
-      // console.log('pick', pickingProxy.atom.resno)
-      // if (atom.resno) {
-      //   // var index = atom.resno - firstResNum
-      // }
-      //var index = atom.resno - firstResNum
-      var index = atom.residueIndex
-      if (index < csv.length && atom.resno >= firstResNum) {
+      const csvRow = residueData[atom.resno]
+      if (csvRow !== undefined) {
+        const wtProb = parseFloat(csvRow[csvWtProbCol])
+        const prProb = parseFloat(csvRow[csvPrProbCol])
         tooltip.innerHTML = `
       RESNO: ${atom.resno}<br/>
       WT AA: ${atom.resname}<br/>
-      WT PROB: ${csv[index][csvWtProbCol]}<br/>
-      PRED AA: ${csv[index][csvPrAaCol]}<br/>
-      PRED PROB: ${csv[index][csvPrProbCol]}<br/>`
-        tooltip.style.bottom = 3 + 'px'
-        tooltip.style.left = stage.viewer.width - 200 + 'px'
+      WT PROB: ${wtProb.toFixed(4)}<br/>
+      PRED AA: ${csvRow[csvPrAaCol]}<br/>
+      PRED PROB: ${prProb.toFixed(4)}<br/>`
+        tooltip.style.bottom = stage.viewer.height - 80 + 'px'
+        tooltip.style.left = stage.viewer.width - 170 + 'px'
         tooltip.style.display = 'block'
-      } 
-      else {
+      } else {
         tooltip.style.display = 'none'
       }
     }
@@ -139,12 +140,12 @@ var ligandSele = '( not polymer or not ( protein or nucleic ) ) and not ( water 
 var pocketRadius = 0
 var pocketRadiusClipFactor = 1
 
-var cartoonRepr, spacefillRepr, neighborRepr, ligandRepr, contactRepr, pocketRepr, labelRepr, customRepr, ballStickRepr, waterIonRepr
-
-var heatMap, customPercent
+var cartoonRepr, neighborRepr, ligandRepr, contactRepr, pocketRepr, labelRepr, customRepr
 
 var struc
 var csv
+var residueData
+
 var neighborSele
 var sidechainAttached = false
 
@@ -154,9 +155,6 @@ const csvResNumCol = 4
 const csvWtProbCol = 7
 const csvPrAaCol = 6
 const csvPrProbCol = 8
-
-var firstResNum
-var resNum, wtProb, normWtProb
 
 function loadStructure (proteinFile, csvFile) {
   struc = undefined
@@ -168,8 +166,6 @@ function loadStructure (proteinFile, csvFile) {
   pocketOpacityRange.value = 0
   cartoonCheckbox.checked = true
   customCheckbox.checked = false
-  ballStickCheckbox.checked = false
-  waterIonCheckbox.checked = false
   hydrophobicCheckbox.checked = false
   hydrogenBondCheckbox.checked = true
   weakHydrogenBondCheckbox.checked = false
@@ -181,7 +177,7 @@ function loadStructure (proteinFile, csvFile) {
   cationPiCheckbox.checked = true
   piStackingCheckbox.checked = true
   return Promise.all([
-    stage.loadFile(proteinFile, { defaultRepresentation: true }),
+    stage.loadFile(proteinFile /*, { defaultRepresentation: true }*/),
     NGL.autoLoad(csvFile, {
       ext: 'csv',
       delimiter: ' ',
@@ -192,12 +188,11 @@ function loadStructure (proteinFile, csvFile) {
     struc = ol[0]
     csv = ol[1].data
 
-    // for (var i = 0; i < csv.length; i++) {
-    //   wtProb = parseFloat(csv[i][csvWtProbCol])
-    //   resNum = parseFloat(csv[i][csvResNumCol])
-    //   normWtProb = (wtProb * 100).toFixed(0)
-    //   return wtProb, resNum, normWtProb
-    // }
+    residueData = {}
+    for (var i = 0; i < csv.length; i++) {
+      const resNum = parseFloat(csv[i][csvResNumCol])
+      residueData[resNum] = csv[i]
+    }
     firstResNum = parseInt(csv[0][csvResNumCol])
 
     setLigandOptions()
@@ -207,15 +202,14 @@ function loadStructure (proteinFile, csvFile) {
     heatMap = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
         for (var i = 0; i < csv.length; i++) {
-          const wtProb = parseFloat(csv[i][csvWtProbCol])
-          const resNum = parseFloat(csv[i][csvResNumCol])
+          const csvRow = residueData[atom.resno]
+         if (atom.isNucleic()) {
+           return 0x004e00
+         }
+         if (csvRow !== undefined) {
+           const wtProb = parseFloat(csvRow[csvWtProbCol])
+           const normWtProb = (wtProb * 100).toFixed(0)
 
-          const normWtProb = (wtProb * 100).toFixed(0)
-
-          if (atom.isNucleic()) {
-            return 0x004e00
-          } 
-          if (atom.resno === resNum) {
             return gradientArray[normWtProb]
           }
         }
@@ -259,22 +253,6 @@ function loadStructure (proteinFile, csvFile) {
     customRepr = struc.addRepresentation('cartoon', {
       color: customPercent,
       visible: false
-    })
-    ballStickRepr = struc.addRepresentation('ball+stick', {
-      visible: false,
-      // removes water ions
-      sele: 'polymer',
-      name: 'polymer'
-    })
-    waterIonRepr = struc.addRepresentation('ball+stick', {
-      name: 'waterIon',
-      visible: waterIonCheckbox.checked,
-      sele: 'water or ion',
-      scale: 0.25
-    })
-    spacefillRepr = struc.addRepresentation('spacefill', {
-      sele: ligandSele,
-      visible: true
     })
     neighborRepr = struc.addRepresentation('ball+stick', {
       sele: 'none',
@@ -442,8 +420,6 @@ addElement(loadPdbidInput)
 function showFull () {
   ligandSelect.value = ''
 
-  spacefillRepr.setVisibility(false)
-
   ligandRepr.setVisibility(false)
   neighborRepr.setVisibility(false)
   contactRepr.setVisibility(false)
@@ -452,13 +428,6 @@ function showFull () {
 
   struc.autoView(2000)
 }
-
-// var fullButton = createElement('input', {
-//   value: 'full structure',
-//   type: 'button',
-//   onclick: showFull
-// }, { top: getTopPosition(30), left: '12px' })
-// addElement(fullButton)
 
 function showLigand (sele) {
   var s = struc.structure
@@ -473,8 +442,6 @@ function showLigand (sele) {
   pocketRadius = Math.max(sview.boundingBox.getSize(new NGL.Vector3()).length() / 2, 2) + 10
   var withinSele2 = s.getAtomSetWithinSelection(new NGL.Selection(sele), pocketRadius + 2)
   var neighborSele2 = '(' + withinSele2.toSeleString() + ') and not (' + sele + ') and polymer'
-
-  spacefillRepr.setVisibility(false)
 
   ligandRepr.setVisibility(true)
   neighborRepr.setVisibility(true)
@@ -507,8 +474,6 @@ function showRegion (sele) {
   neighborSele = '(' + expandedSele + ') and not (' + sele + ')'
   neighborSele = expandedSele
 
-  spacefillRepr.setVisibility(false)
-
   ligandRepr.setVisibility(false)
   neighborRepr.setVisibility(false)
   contactRepr.setVisibility(false)
@@ -520,7 +485,7 @@ function showRegion (sele) {
 
 var ligandSelect = createSelect([], {
   onchange: function (e) {
-    // residueSelect.value = ''
+    residueSelect.value = ''
     var sele = e.target.value
     if (!sele) {
       showFull()
@@ -555,13 +520,14 @@ addElement(residueSelect)
 
 // remove default clicking
 stage.mouseControls.remove('clickPick-left')
-// onclick residue select and show ligand
+
+// onclick residue select and show ligandrepr
 var prevSele = ''
 stage.signals.clicked.add(function (pickingProxy) {
   if (pickingProxy === undefined) {
     showFull()
   }
-  if (ballStickCheckbox.checked === false && pickingProxy !== undefined) {
+  if (pickingProxy !== undefined) {
     var sele = ''
     if (pickingProxy.closestBondAtom) {
       sele = ''
@@ -652,31 +618,6 @@ var customCheckbox = createElement('input', {
 addElement(customCheckbox)
 addElement(createElement('span', {
   innerText: 'Custom'
-}, { top: getTopPosition(), left: '32px', color: 'grey' }))
-
-var ballStickCheckbox = createElement('input', {
-  type: 'checkbox',
-  checked: false,
-  onchange: function (e) {
-    ballStickRepr.setVisibility(e.target.checked)
-  }
-}, { top: getTopPosition(20), left: '12px' })
-addElement(ballStickCheckbox)
-addElement(createElement('span', {
-  innerText: 'ball+stick'
-}, { top: getTopPosition(), left: '32px', color: 'grey' }))
-
-var waterIonCheckbox = createElement('input', {
-  type: 'checkbox',
-  checked: false,
-  onchange: function (e) {
-    // stage.getRepresentationsByName('waterIon')
-    waterIonRepr.setVisibility(e.target.checked)
-  }
-}, { top: getTopPosition(20), left: '12px' })
-addElement(waterIonCheckbox)
-addElement(createElement('span', {
-  innerText: 'water ion'
 }, { top: getTopPosition(), left: '32px', color: 'grey' }))
 
 var sidechainAttachedCheckbox = createElement('input', {
