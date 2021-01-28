@@ -553,6 +553,8 @@ var residueSelect = createSelect([], {
 }, { top: getTopPosition(20), left: '12px', width: '130px' })
 addElement(residueSelect)
 
+// remove default clicking
+stage.mouseControls.remove('clickPick-left')
 // onclick residue select and show ligand
 var prevSele = ''
 stage.signals.clicked.add(function (pickingProxy) {
