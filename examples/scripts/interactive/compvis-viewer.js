@@ -89,52 +89,6 @@ stage.signals.hovered.add(function (pickingProxy) {
   }
 })
 
-function getGradientColor (startColor, endColor, thirdColor, percent) {
-  // switch for second gradient i.e white to red for heat map
-  if (percent >= 1) {
-    percent -= 1
-    startColor = endColor
-    endColor = thirdColor
-  }
-
-  // get colors
-  var startRed = parseInt(startColor.substr(0, 2), 16)
-  var startGreen = parseInt(startColor.substr(2, 2), 16)
-  var startBlue = parseInt(startColor.substr(4, 2), 16)
-
-  var endRed = parseInt(endColor.substr(0, 2), 16)
-  var endGreen = parseInt(endColor.substr(2, 2), 16)
-  var endBlue = parseInt(endColor.substr(4, 2), 16)
-
-  // calculate new color
-  var diffRed = endRed - startRed
-  var diffGreen = endGreen - startGreen
-  var diffBlue = endBlue - startBlue
-
-  diffRed = ((diffRed * percent) + startRed).toString(16).split('.')[0]
-  diffGreen = ((diffGreen * percent) + startGreen).toString(16).split('.')[0]
-  diffBlue = ((diffBlue * percent) + startBlue).toString(16).split('.')[0]
-
-  // ensure 2 digits by color (necessary)
-  if (diffRed.length === 1) diffRed = '0' + diffRed
-  if (diffGreen.length === 1) diffGreen = '0' + diffGreen
-  if (diffBlue.length === 1) diffBlue = '0' + diffBlue
-
-  return '0x' + diffRed + diffGreen + diffBlue
-}
-
-function makeGradientArray () {
-  var gradientArray = []
-  for (var count = 0; count < 101; count++) {
-    var newColor = getGradientColor('FF0000', 'FFFFFF', '0000FF', (0.02 * count))
-    var numColor = parseInt(Number(newColor), 10)
-    gradientArray.push(numColor)
-  }
-  return gradientArray
-}
-
-var gradientArray = makeGradientArray()
-
 var ligandSele = '( not polymer or not ( protein or nucleic ) ) and not ( water or ACE or NH2 )'
 
 var pocketRadius = 0
@@ -177,7 +131,7 @@ function loadStructure (proteinFile, csvFile) {
   cationPiCheckbox.checked = true
   piStackingCheckbox.checked = true
   return Promise.all([
-    stage.loadFile(proteinFile /*, { defaultRepresentation: true }*/),
+    stage.loadFile(proteinFile),
     NGL.autoLoad(csvFile, {
       ext: 'csv',
       delimiter: ' ',
@@ -188,49 +142,52 @@ function loadStructure (proteinFile, csvFile) {
     struc = ol[0]
     csv = ol[1].data
 
+    setLigandOptions()
+    setChainOptions()
+    setResidueOptions()
+
     residueData = {}
     for (var i = 0; i < csv.length; i++) {
       const resNum = parseFloat(csv[i][csvResNumCol])
       residueData[resNum] = csv[i]
     }
-    firstResNum = parseInt(csv[0][csvResNumCol])
 
-    setLigandOptions()
-    setChainOptions()
-    setResidueOptions()
-
-    heatMap = NGL.ColormakerRegistry.addScheme(function (params) {
+    var heatMap = NGL.ColormakerRegistry.addScheme(function (params) {
+      this.parameters = Object.assign(this.parameters, {
+        domain: [0, 1],
+        scale: 'rwb',
+        mode: 'rgb'
+      })
+      var scale = this.getScale()
       this.atomColor = function (atom) {
-        for (var i = 0; i < csv.length; i++) {
-          const csvRow = residueData[atom.resno]
-         if (atom.isNucleic()) {
-           return 0x004e00
-         }
-         if (csvRow !== undefined) {
-           const wtProb = parseFloat(csvRow[csvWtProbCol])
-           const normWtProb = (wtProb * 100).toFixed(0)
-
-            return gradientArray[normWtProb]
-          }
+        const csvRow = residueData[atom.resno]
+        if (atom.isNucleic()) {
+          return 0x004e00
+        }
+        if (csvRow !== undefined) {
+          const wtProb = parseFloat(csvRow[csvWtProbCol])
+          return scale(wtProb)
+        } else {
+          return 0xcccccc
         }
       }
     })
 
-    customPercent = NGL.ColormakerRegistry.addScheme(function (params) {
+    var customPercent = NGL.ColormakerRegistry.addScheme(function (params) {
       this.atomColor = function (atom) {
         for (var i = 0; i < csv.length; i++) {
-          const predProb = parseFloat(csv[i][csvPrProbCol])
-          const wtProb = parseFloat(csv[i][csvWtProbCol])
-          // console.log('wt', wtProb)
-          const resNum = parseFloat(csv[i][csvResNumCol])
+          const csvRow = residueData[atom.resno]
 
-          if (atom.resno === resNum) {
-            if (atom.isNucleic()) {
-              return 0x004e00
-            } else if (wtProb < 0.01 && predProb > 0.7) {
+          if (atom.isNucleic()) {
+            return 0x004e00
+          }
+          if (csvRow !== undefined) {
+            const wtProb = parseFloat(csvRow[csvWtProbCol])
+            const predProb = parseFloat(csvRow[csvPrProbCol])
+            if (wtProb < 0.01 && predProb > 0.7) {
               return 0xFF0080// hot pink
             } else if (wtProb < 0.01) {
-              return 0xCC00FF // hot pink
+              return 0xCC00FF // purple
             } else if (parseFloat(csv[i][7] < 0.05)) {
               return 0xFF0000 // red
             } else if (wtProb < 0.10) {
@@ -632,7 +589,7 @@ var sidechainAttachedCheckbox = createElement('input', {
 }, { top: getTopPosition(20), left: '12px' })
 addElement(sidechainAttachedCheckbox)
 addElement(createElement('span', {
-  innerText: 'sidechainAttached'
+  innerText: 'remove sidechain'
 }, { top: getTopPosition(), left: '32px', color: 'grey' }))
 
 var labelCheckbox = createElement('input', {
