@@ -41,7 +41,6 @@ Promise.all([
     struc.pos = []
 
     for (var i = 0; i < csv.length; i++) {
-     
       var predAaProb = parseFloat(csv[i][csvPrProbCol])
       var wtAaProb = parseFloat(csv[i][csvWtProbCol])
       var predAa = csv[i][csvPrAaCol]
@@ -51,7 +50,7 @@ Promise.all([
       struc.predAa.push(predAa)
       struc.pos.push(pos)
     }
-    return struc.predAaProb, struc.wtAaProb, struc.predAa, struc.pos
+    return struc
   }
   addStrucValue()
   console.log('struc2', struc)
